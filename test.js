@@ -1,5 +1,5 @@
 import test from 'ava';
-import QuickLRU from '.';
+import QuickLRU from './index.js';
 
 const lruWithDuplicates = () => {
 	const lru = new QuickLRU({maxSize: 2});
@@ -9,7 +9,8 @@ const lruWithDuplicates = () => {
 	return lru;
 };
 
-const sleep = ms =>
+// TODO: Use `import {setTimeout as delay} from 'timers/promises';` when targeting Node.js 16.
+const delay = ms =>
 	new Promise(resolve => {
 		setTimeout(resolve, ms);
 	});
@@ -17,7 +18,13 @@ const sleep = ms =>
 test('main', t => {
 	t.throws(() => {
 		new QuickLRU(); // eslint-disable-line no-new
-	}, /maxSize/);
+	}, {message: /maxSize/});
+});
+
+test('max age - incorrect value', t => {
+	t.throws(() => {
+		new QuickLRU({maxSize: 10, maxAge: 0}); // eslint-disable-line no-new
+	}, {message: /maxAge/});
 });
 
 test('max age - incorrect value', t => {
@@ -226,7 +233,7 @@ test('`onEviction` option method is called after `maxSize` is exceeded', t => {
 test('set(expiry) - an individual item could have custom expiration', async t => {
 	const lru = new QuickLRU({maxSize: 10});
 	lru.set('1', 'test', {maxAge: 100});
-	await sleep(200);
+	await delay(200);
 	t.false(lru.has('1'));
 });
 
@@ -234,9 +241,9 @@ test('set(expiry) - items without expiration will never expired', async t => {
 	const lru = new QuickLRU({maxSize: 10});
 	lru.set('1', 'test', {maxAge: 100});
 	lru.set('2', 'boo');
-	await sleep(200);
+	await delay(200);
 	t.false(lru.has('1'));
-	await sleep(200);
+	await delay(200);
 	t.true(lru.has('2'));
 });
 
@@ -244,9 +251,9 @@ test('set(expiry) - not a number expires should not be take in account', async t
 	const lru = new QuickLRU({maxSize: 10});
 	lru.set('1', 'test', 'string');
 	lru.set('2', 'boo');
-	await sleep(200);
+	await delay(200);
 	t.true(lru.has('1'));
-	await sleep(200);
+	await delay(200);
 	t.true(lru.has('2'));
 });
 
@@ -254,25 +261,25 @@ test('set(expiry) - local expires prevails over the global maxAge', async t => {
 	const lru = new QuickLRU({maxSize: 10, maxAge: 1000});
 	lru.set('1', 'test', {maxAge: 100});
 	lru.set('2', 'boo');
-	await sleep(300);
+	await delay(300);
 	t.false(lru.has('1'));
-	await sleep(200);
+	await delay(200);
 	t.true(lru.has('2'));
 });
 
 test('set(expiry) - set the same item should update the expiration time', async t => {
 	const lru = new QuickLRU({maxSize: 10, maxAge: 150});
 	lru.set('1', 'test');
-	await sleep(100);
+	await delay(100);
 	lru.set('1', 'test');
-	await sleep(100);
+	await delay(100);
 	t.true(lru.has('1'));
 });
 
 test('max age - should remove the item if has expired on call `get()` method upon the same key', async t => {
 	const lru = new QuickLRU({maxSize: 10, maxAge: 90});
 	lru.set('1', 'test');
-	await sleep(200);
+	await delay(200);
 	t.is(lru.get('1'), undefined);
 });
 
@@ -281,16 +288,16 @@ test('max age - a non-recent item can also expire', async t => {
 	lru.set('1', 'test1');
 	lru.set('2', 'test2');
 	lru.set('3', 'test4');
-	await sleep(200);
+	await delay(200);
 	t.is(lru.get('1'), undefined);
 });
 
 test('max age - setting the item again should refresh the expiration time', async t => {
 	const lru = new QuickLRU({maxSize: 2, maxAge: 100});
 	lru.set('1', 'test');
-	await sleep(50);
+	await delay(50);
 	lru.set('1', 'test2');
-	await sleep(50);
+	await delay(50);
 	t.is(lru.get('1'), 'test2');
 });
 
@@ -298,9 +305,9 @@ test('max age - setting an item with a local expiration date', async t => {
 	const lru = new QuickLRU({maxSize: 2, maxAge: 100});
 	lru.set('1', 'test');
 	lru.set('2', 'test2', {maxAge: 500});
-	await sleep(200);
+	await delay(200);
 	t.true(lru.has('2'));
-	await sleep(300);
+	await delay(300);
 	t.false(lru.has('2'));
 });
 
@@ -308,7 +315,7 @@ test('max age - setting an item with a empty object as options parameter must us
 	const lru = new QuickLRU({maxSize: 2, maxAge: 100});
 	lru.set('1', 'test');
 	lru.set('2', 'test2', {});
-	await sleep(200);
+	await delay(200);
 	t.false(lru.has('2'));
 });
 
@@ -334,7 +341,7 @@ test('max age - once an item expires, the eviction function should be called', a
 
 	lru.set(expectKey, expectValue);
 
-	await sleep(200);
+	await delay(200);
 
 	t.is(lru.get('1'), undefined);
 	t.true(isCalled);
@@ -368,7 +375,7 @@ test('max age - once an non-recent item expires, the eviction function should be
 	lru.set('4', 'test4');
 	lru.set('5', 'test5');
 
-	await sleep(200);
+	await delay(200);
 
 	t.is(lru.get('1'), undefined);
 	t.true(isCalled);
@@ -404,7 +411,7 @@ test('max age - on resize, max aged items should also be evicted', async t => {
 
 	lru.resize(2);
 
-	await sleep(200);
+	await delay(200);
 
 	t.false(lru.has('1'));
 	t.true(isCalled);
@@ -415,14 +422,14 @@ test('max age - on resize, max aged items should also be evicted', async t => {
 test('max age - an item that is not expired can also be peek', async t => {
 	const lru = new QuickLRU({maxSize: 10, maxAge: 400});
 	lru.set('1', 'test');
-	await sleep(200);
+	await delay(200);
 	t.is(lru.peek('1'), 'test');
 });
 
 test('max age - peeking the item should also remove the item if it has expired', async t => {
 	const lru = new QuickLRU({maxSize: 10, maxAge: 100});
 	lru.set('1', 'test');
-	await sleep(200);
+	await delay(200);
 	t.is(lru.peek('1'), undefined);
 });
 
@@ -431,7 +438,7 @@ test('max age - peeking the item should also remove expired items that are not r
 	lru.set('1', 'test');
 	lru.set('2', 'test');
 	lru.set('3', 'test');
-	await sleep(200);
+	await delay(200);
 	t.is(lru.peek('1'), undefined);
 });
 
@@ -440,7 +447,7 @@ test('max age - non-recent items that are not expired are also valid', async t =
 	lru.set('1', 'test');
 	lru.set('2', 'test2');
 	lru.set('3', 'test4');
-	await sleep(100);
+	await delay(100);
 	t.is(lru.get('1'), 'test');
 });
 
@@ -449,7 +456,7 @@ test('max age - has method should delete the item if expired and return false', 
 	lru.set('1', undefined);
 	lru.set('2', 'test');
 	lru.set('3', 'test');
-	await sleep(200);
+	await delay(200);
 	t.false(lru.has('1'));
 });
 
@@ -474,7 +481,7 @@ test('max age - `.keys()` should return keys that are not expirated', async t =>
 	lru.set('1', undefined);
 	lru.set('2', 'test2');
 	lru.set('3', 'test3');
-	await sleep(200);
+	await delay(200);
 	lru.set('4', 'loco');
 
 	t.deepEqual([...lru.keys()].sort(), ['4']);
@@ -485,7 +492,7 @@ test('max age - `.keys()` should return an empty list if all items has expired',
 	lru.set('1', undefined);
 	lru.set('2', 'test2');
 	lru.set('3', 'test3');
-	await sleep(200);
+	await delay(200);
 
 	t.deepEqual([...lru.keys()].sort(), []);
 });
@@ -495,7 +502,7 @@ test('max age - `.values()` should return an empty if all items has expired', as
 	lru.set('1', undefined);
 	lru.set('2', 'test2');
 	lru.set('3', 'test3');
-	await sleep(200);
+	await delay(200);
 
 	t.deepEqual([...lru.values()].sort(), []);
 });
@@ -505,7 +512,7 @@ test('max age - `.values()` should return the values that are not expired', asyn
 	lru.set('1', undefined);
 	lru.set('2', 'test2');
 	lru.set('3', 'test3');
-	await sleep(200);
+	await delay(200);
 	lru.set('5', 'loco');
 
 	t.deepEqual([...lru.values()].sort(), ['loco']);
@@ -516,17 +523,11 @@ test('max age - `entriesDescending()` should not return expired entries', async 
 	lru.set('1', undefined);
 	lru.set('2', 'test2');
 	lru.set('3', 'test3');
-	await sleep(200);
+	await delay(200);
 	lru.set('4', 'coco');
 	lru.set('5', 'loco');
 
-	t.deepEqual(
-		[...lru.entriesDescending()],
-		[
-			['5', 'loco'],
-			['4', 'coco']
-		]
-	);
+	t.deepEqual([...lru.entriesDescending()], [['5', 'loco'], ['4', 'coco']]);
 });
 
 test('max age - `entriesDescending()` should not return expired entries from old cache', async t => {
@@ -534,17 +535,11 @@ test('max age - `entriesDescending()` should not return expired entries from old
 	lru.set('1', undefined);
 	lru.set('2', 'test2');
 	lru.set('3', 'test3');
-	await sleep(200);
+	await delay(200);
 	lru.set('4', 'coco');
 	lru.set('5', 'loco');
 
-	t.deepEqual(
-		[...lru.entriesDescending()],
-		[
-			['5', 'loco'],
-			['4', 'coco']
-		]
-	);
+	t.deepEqual([...lru.entriesDescending()], [['5', 'loco'], ['4', 'coco']]);
 });
 
 test('max age - `entriesDescending()` should return all entries in desc order if are not expired', async t => {
@@ -552,20 +547,11 @@ test('max age - `entriesDescending()` should return all entries in desc order if
 	lru.set('1', undefined);
 	lru.set('2', 'test2');
 	lru.set('3', 'test3');
-	await sleep(200);
+	await delay(200);
 	lru.set('4', 'coco');
 	lru.set('5', 'loco');
 
-	t.deepEqual(
-		[...lru.entriesDescending()],
-		[
-			['5', 'loco'],
-			['4', 'coco'],
-			['3', 'test3'],
-			['2', 'test2'],
-			['1', undefined]
-		]
-	);
+	t.deepEqual([...lru.entriesDescending()], [['5', 'loco'], ['4', 'coco'], ['3', 'test3'], ['2', 'test2'], ['1', undefined]]);
 });
 
 test('max age - `entriesAscending()` should not return expired entries', async t => {
@@ -573,17 +559,11 @@ test('max age - `entriesAscending()` should not return expired entries', async t
 	lru.set('1', undefined);
 	lru.set('2', 'test2');
 	lru.set('3', 'test3');
-	await sleep(200);
+	await delay(200);
 	lru.set('4', 'coco');
 	lru.set('5', 'loco');
 
-	t.deepEqual(
-		[...lru.entriesAscending()],
-		[
-			['4', 'coco'],
-			['5', 'loco']
-		]
-	);
+	t.deepEqual([...lru.entriesAscending()], [['4', 'coco'], ['5', 'loco']]);
 });
 
 test('max age - `entriesAscending() should not return expired entries even if are not recent', async t => {
@@ -591,43 +571,30 @@ test('max age - `entriesAscending() should not return expired entries even if ar
 	lru.set('1', undefined);
 	lru.set('2', 'test2');
 	lru.set('3', 'test3');
-	await sleep(200);
+	await delay(200);
 	lru.set('4', 'coco');
 	lru.set('5', 'loco');
 
-	t.deepEqual(
-		[...lru.entriesAscending()],
-		[
-			['4', 'coco'],
-			['5', 'loco']
-		]
-	);
+	t.deepEqual([...lru.entriesAscending()], [['4', 'coco'], ['5', 'loco']]);
 });
 
 test('max age - `entriesAscending()` should return the entries that are not expired', async t => {
 	const lru = new QuickLRU({maxSize: 10, maxAge: 100});
 	lru.set('1', undefined);
 	lru.set('2', 'test2');
-	await sleep(200);
+	await delay(200);
 	lru.set('3', 'test3');
 	lru.set('4', 'coco');
 	lru.set('5', 'loco');
 
-	t.deepEqual(
-		[...lru.entriesAscending()],
-		[
-			['3', 'test3'],
-			['4', 'coco'],
-			['5', 'loco']
-		]
-	);
+	t.deepEqual([...lru.entriesAscending()], [['3', 'test3'], ['4', 'coco'], ['5', 'loco']]);
 });
 
 test('max age - `.[Symbol.iterator]()` should not return expired items', async t => {
 	const lru = new QuickLRU({maxSize: 2, maxAge: 100});
 	lru.set('key', 'value');
 	lru.set('key3', 1);
-	await sleep(200);
+	await delay(200);
 	lru.set('key4', 2);
 
 	t.deepEqual([...lru].sort(), [['key4', 2]]);
@@ -638,7 +605,7 @@ test('max age - `.[Symbol.iterator]()` should not return expired items that are 
 	lru.set('keyunique', 'value');
 	lru.set('key3unique', 1);
 	lru.set('key4unique', 2);
-	await sleep(200);
+	await delay(200);
 
 	t.deepEqual([...lru].sort(), []);
 });
@@ -650,14 +617,7 @@ test('entriesAscending enumerates cache items oldest-first', t => {
 	lru.set('3', 3);
 	lru.set('3', 7);
 	lru.set('2', 8);
-	t.deepEqual(
-		[...lru.entriesAscending()],
-		[
-			['1', 1],
-			['3', 7],
-			['2', 8]
-		]
-	);
+	t.deepEqual([...lru.entriesAscending()], [['1', 1], ['3', 7], ['2', 8]]);
 });
 
 test('entriesDescending enumerates cache items newest-first', t => {
@@ -667,15 +627,7 @@ test('entriesDescending enumerates cache items newest-first', t => {
 	lru.set('a', 8);
 	lru.set('t', 4);
 	lru.set('v', 3);
-	t.deepEqual(
-		[...lru.entriesDescending()],
-		[
-			['v', 3],
-			['t', 4],
-			['a', 8],
-			['q', 2]
-		]
-	);
+	t.deepEqual([...lru.entriesDescending()], [['v', 3], ['t', 4], ['a', 8], ['q', 2]]);
 });
 
 test('resize removes older items', t => {
@@ -702,7 +654,7 @@ test('resize omits evictions', t => {
 	lru.set('2', 2);
 	lru.set('3', 3);
 	lru.resize(1);
-	t.true(calls.length >= 1);
+	t.true(calls.length > 0);
 	t.true(calls.some(([key]) => key === '1'));
 });
 
@@ -714,16 +666,7 @@ test('resize increases capacity', t => {
 	lru.set('3', 3);
 	lru.set('4', 4);
 	lru.set('5', 5);
-	t.deepEqual(
-		[...lru.entriesAscending()],
-		[
-			['1', 1],
-			['2', 2],
-			['3', 3],
-			['4', 4],
-			['5', 5]
-		]
-	);
+	t.deepEqual([...lru.entriesAscending()], [['1', 1], ['2', 2], ['3', 3], ['4', 4], ['5', 5]]);
 });
 
 test('resize does not conflict with the same number of items', t => {
@@ -734,21 +677,24 @@ test('resize does not conflict with the same number of items', t => {
 	lru.resize(3);
 	lru.set('4', 4);
 	lru.set('5', 5);
-	t.deepEqual(
-		[...lru.entriesAscending()],
-		[
-			['1', 1],
-			['2', 2],
-			['3', 3],
-			['4', 4],
-			['5', 5]
-		]
-	);
+	t.deepEqual([...lru.entriesAscending()], [['1', 1], ['2', 2], ['3', 3], ['4', 4], ['5', 5]]);
 });
 
 test('resize checks parameter bounds', t => {
 	const lru = new QuickLRU({maxSize: 2});
 	t.throws(() => {
 		lru.resize(-1);
-	}, /maxSize/);
+	}, {message: /maxSize/});
+});
+
+test('function value', t => {
+	const lru = new QuickLRU({maxSize: 1});
+	let isCalled = false;
+
+	lru.set('fn', () => {
+		isCalled = true;
+	});
+
+	lru.get('fn')();
+	t.true(isCalled);
 });

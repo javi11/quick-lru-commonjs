@@ -39,7 +39,7 @@ declare class QuickLRU<KeyType, ValueType> implements Iterable<[KeyType, ValueTy
 
 	@example
 	```
-	import QuickLRU = require('quick-lru-cjs');
+	const QuickLRU = require('quick-lru-cjs');
 
 	const lru = new QuickLRU({maxSize: 1000});
 
@@ -52,7 +52,7 @@ declare class QuickLRU<KeyType, ValueType> implements Iterable<[KeyType, ValueTy
 	//=> '🌈'
 	```
 	*/
-	constructor(options: QuickLRU.Options<KeyType, ValueType>);
+	constructor(options: Options<KeyType, ValueType>);
 
 	[Symbol.iterator](): IterableIterator<[KeyType, ValueType]>;
 
@@ -123,5 +123,3 @@ declare class QuickLRU<KeyType, ValueType> implements Iterable<[KeyType, ValueTy
 	*/
 	entriesDescending(): IterableIterator<[KeyType, ValueType]>;
 }
-
-export = QuickLRU;
